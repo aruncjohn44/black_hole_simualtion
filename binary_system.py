@@ -49,8 +49,7 @@ class BlackHole:
             self.open(img_name, size=self.axe_X)
 
         except FileNotFoundError:
-            print("milkyway image not found, creating a default image")
-            self.create_default_image(size=self.axe_X)
+            print("milkyway image not found")
 
     def init_var(self):
         """Initialize most variables."""
@@ -84,56 +83,7 @@ class BlackHole:
         self.img2 = None
         self.ax = None
         #----------------------------------------------------------------------
-        # if want matricies without images loaded
-#        self.axe_Y = self.axe_X//2
-#        self.img_res = self.axe_X/360  # =Pixels per degree along axis
-#        self.img_res_Y = self.axe_Y/180  # =Pixels per degree along axis
-#        self.FOV_img_Y = self.FOV_img//2
-#        self.img_debut = None
 
-    def create_default_image(self, size="default", pattern="grid"):
-        """Create a default image if doesn't want to import one."""
-        if size == "default":
-            size = self.axe_X
-
-        abs_path = os.path.abspath(os.path.dirname(sys.argv[0]))
-        folder = os.path.join(abs_path, 'images')
-        self.img_name = os.path.join(folder, 'default.png')
-
-        axe_X = 1000  # int(self.axe_X)
-        axe_Y = 500  # self.axe_X//2
-
-        if pattern == "noise":
-            pixels = np.random.randint(0, 255, (axe_Y, axe_X, 3))
-            self.img_original = Image.fromarray(pixels.astype('uint8'), 'RGB')
-
-        elif pattern in ("grid", "cercle", "rectangle"):
-            self.img_original = Image.new('RGB', (axe_X, axe_Y), color=255)
-            Drawer = ImageDraw.Draw(self.img_original)
-            Drawer.rectangle((0, 0, axe_X/2, axe_Y/2), fill="yellow")
-            Drawer.rectangle((0, axe_Y/2, axe_X/2, axe_Y), fill="green")
-            Drawer.rectangle((axe_Y, 0, axe_X, axe_Y/2), fill="blue")
-            Drawer.rectangle((axe_Y, axe_Y/2, axe_X, axe_Y), fill="red")
-
-            nbr_rect = 40
-            if pattern == "grid":
-                for i in range(0, axe_X, axe_X//nbr_rect):
-                    Drawer.line((i, 0, i, axe_Y), fill="black", width=2)
-                for i in range(0, axe_Y, axe_Y//(nbr_rect//2)):
-                    Drawer.line((0, i, axe_X, i), fill="black", width=2)
-            else:
-                for i in range(0, axe_X, axe_X//nbr_rect):
-
-                    if pattern == "cercle":
-                        Drawer.ellipse((i, i/2, axe_X-i, axe_Y-i/2), outline="black")
-                    elif pattern == "rectangle":
-                        Drawer.rectangle((i, i/2, axe_X-i, axe_Y-i/2), outline="black")
-
-        else:
-            raise ValueError("pattern parameter must be: grid, noise, cercle or rectangle")
-
-        self.img_debut = self.img_resize(size)
-        return self.img_debut
 
     def open(self, img_name, size="default"):
         """Open an equirectangular image.
@@ -190,42 +140,37 @@ class BlackHole:
 
         vrai_debut = time.process_time()
 
-        if self.use_matrix and self.check_matrices():
-            img_matrix_x, img_matrix_y = self.open_matrices()
-            plt.close('Trajectories interpolation')
-            plt.close('Trajectories plan')
 
-        else:
-            seen_angle, deviated_angle = self.trajectories()
+        seen_angle, deviated_angle = self.trajectories()
 
-            self.interpolation = self.interpolate(seen_angle, deviated_angle)
+        self.interpolation = self.interpolate(seen_angle, deviated_angle)
 
-            if self.display_interpolation is True:
-                xmin = np.min(seen_angle)
-                xmax = np.max(seen_angle)
-                seen_angle_splin = np.linspace(xmin, xmax, 20001)
-                deviated_angle_splin = self.interpolation(seen_angle_splin)
-                plt.figure('Trajectories interpolation')
-                plt.clf()
-                plt.title("Light deviation interpolation", va='bottom')
-                plt.xlabel('seen angle(°)')
-                plt.ylabel('deviated angle(°)')
-                plt.plot(seen_angle, deviated_angle, 'o')
-                plt.plot(seen_angle_splin, deviated_angle_splin)
-                plt.grid()
-                #plt.savefig('interpolation.png', dpi=250, bbox_inches='tight')
-                plt.draw()
-    #
-            print("last angle", seen_angle[-1])
-            print("trajectories time: %.1f" % (time.process_time()-vrai_debut))
+        if self.display_interpolation is True:
+            xmin = np.min(seen_angle)
+            xmax = np.max(seen_angle)
+            seen_angle_splin = np.linspace(xmin, xmax, 20001)
+            deviated_angle_splin = self.interpolation(seen_angle_splin)
+            plt.figure('Trajectories interpolation')
+            plt.clf()
+            plt.title("Light deviation interpolation", va='bottom')
+            plt.xlabel('seen angle(°)')
+            plt.ylabel('deviated angle(°)')
+            plt.plot(seen_angle, deviated_angle, 'o')
+            plt.plot(seen_angle_splin, deviated_angle_splin)
+            plt.grid()
+            #plt.savefig('interpolation.png', dpi=250, bbox_inches='tight')
+            plt.draw()
+#
+        print("last angle", seen_angle[-1])
+        print("trajectories time: %.1f" % (time.process_time()-vrai_debut))
 
-            img_matrix_x, img_matrix_y = self.create_matrices()
+        img_matrix_x, img_matrix_y = self.create_matrices()
 
-            if self.save_matrix is True:
-                matrix_file_x, matrix_file_y = self.matrices_names()
-                np.savetxt(matrix_file_x, img_matrix_x, fmt='%i')
-                np.savetxt(matrix_file_y, img_matrix_y, fmt='%i')
-                print("Saved matrices: \n\t%s\n\t%s" % (matrix_file_x, matrix_file_y))
+        if self.save_matrix is True:
+            matrix_file_x, matrix_file_y = self.matrices_names()
+            np.savetxt(matrix_file_x, img_matrix_x, fmt='%i')
+            np.savetxt(matrix_file_y, img_matrix_y, fmt='%i')
+            print("Saved matrices: \n\t%s\n\t%s" % (matrix_file_x, matrix_file_y))
 
         self.img_matrix_x = img_matrix_x
         self.img_matrix_y = img_matrix_y
@@ -234,9 +179,6 @@ class BlackHole:
 
         vrai_fin = time.process_time()
         print("\nglobal computing time: %.1f\n" % (vrai_fin-vrai_debut))
-
-        if self.display_blackhole:
-            self.plot()
 
     def trajectories(self):
         """Compute several photons trajectories in order to interpolate the
@@ -658,252 +600,6 @@ class BlackHole:
         self.out_graph = False
 
 
-class BlackHoleGUI:
-    """GUI controling a blackhole instance."""
-    def __init__(self, blackhole=None):
-        """GUI controling a blackhole instance."""
-        if blackhole is None:
-            self.blackhole = BlackHole()
-        else:
-            self.blackhole = blackhole
-
-        self.create_interface()
-
-    def create_interface(self):
-        """Create the interface."""
-        root = Tk()
-        frame = Frame(root)
-        root.title("Black hole options")
-        frame.pack()
-
-        open_file_button = Button(frame, text="Open image", width=14, command=self.open_file_name)
-        open_file_button.grid(row=0, column=0)
-
-        L1 = Label(frame, text="radius")
-        L1.grid(row=1, column=0)
-        var = StringVar(root)
-        var.set(self.blackhole.Rs)
-        self.radius = Spinbox(frame, from_=1e-100, to=1e100, textvariable=var, bd=2, width=7)
-        self.radius.grid(row=1, column=1)
-
-        L2 = Label(frame, text="distance")
-        L2.grid(row=2, column=0)
-        var = StringVar(root)
-        var.set(self.blackhole.D)
-        self.distance = Spinbox(frame, from_=1e-100, to=1e100, textvariable=var, bd=2, width=7)
-        self.distance.grid(row=2, column=1)
-
-        compute_button = Button(frame, text="Compute", width=14, command=self.compute)
-        compute_button.grid(row=1, column=2)
-
-        self.message = Label(frame, text="", width=20)
-        self.message.grid(row=1, column=3)
-        self.message5 = Label(frame, text="", width=20)
-        self.message5.grid(row=2, column=3)
-
-        L3 = Label(frame, text="Image size")
-        L3.grid(row=3, column=0)
-        var = StringVar(root)
-        var.set(self.blackhole.axe_X)
-        self.size = Spinbox(frame, from_=1, to=1e100, textvariable=var, bd=2, width=7)
-        self.size.grid(row=3, column=1)
-
-        self.message2 = Label(frame, text="", width=20)
-        self.message2.grid(row=3, column=3)
-
-        save_button = Button(frame, text="Save image", width=14, command=self.img_save)
-        save_button.grid(row=4, column=2)
-
-        self.message4 = Label(frame, text="")
-        self.message4.grid(row=4, column=3)
-
-        message6 = Label(frame, text="Fix background")
-        message6.grid(row=5, column=0)
-
-        fixed_background = BooleanVar()
-        C1 = Checkbutton(frame, text="", variable=fixed_background,
-                         onvalue=True, offvalue=False)
-        C1.grid(row=5, column=1)
-
-        L4 = Label(frame, text="images")
-        L4.grid(row=6, column=0)
-
-        var = StringVar(root)
-        var.set(10)
-        self.number = Spinbox(frame, from_=1, to=1e100, textvariable=var, bd=2, width=7)
-        self.number.grid(row=6, column=1)
-
-        save_gif_button = Button(frame, text="Save animation", width=14, command=self.save_gif)
-        save_gif_button.grid(row=6, column=2)
-
-        self.message3 = Label(frame, text="")
-        self.message3.grid(row=6, column=3)
-
-        root.mainloop()
-
-    def compute(self):
-        """Call the compute method of the blackhole instance."""
-        if not self.test_GUI():
-            return None
-        self.reset_msg()
-
-        try:
-            if float(self.distance.get()) <= 0 or float(self.radius.get()) <= 0:
-                self.message["text"] = "Can't be 0 or negative"
-                return None
-            elif (float(self.distance.get()) == self.blackhole.D
-                      and float(self.radius.get()) == self.blackhole.Rs
-                      and int(self.size.get()) == self.blackhole.axe_X
-                      and self.blackhole.img_matrix_x is not None):
-                self.message["text"] = "same values as before"
-                return None
-            elif float(self.distance.get()) < float(self.radius.get()):
-                self.message["text"] = "Inside black hole !"
-                return None
-            else:
-                self.blackhole.D = float(self.distance.get())
-                self.blackhole.Rs = float(self.radius.get())
-
-        except ValueError:
-            self.message["text"] = "radius, distance"
-            self.message5["text"] = "& image size are floats"
-            return None
-
-        if self.blackhole.axe_X != int(self.size.get()):
-            try:
-                self.increase_resolution()
-            except ValueError as ex:
-                print(ex)
-                return None
-
-        self.message["text"] = "Computing"
-
-        self.blackhole.compute(self.blackhole.Rs, self.blackhole.D)
-        self.message["text"] = "Done !"
-
-    def increase_resolution(self):
-        """Increase the image size and correct offset and zoom to match the new
-        size."""
-        if not self.test_GUI():
-            return None
-        self.reset_msg()
-
-        if int(self.size.get()) <= 0:
-            self.message2["text"] = "Can't be 0 or negative"
-            raise ValueError("Can't be 0 or negative")
-        elif int(self.size.get()) == self.blackhole.axe_X:
-            self.message2["text"] = "same size as before"
-        else:
-            # self.message2["text"] = "Computing"
-            new_size_image = int(self.size.get())
-            self.blackhole.offset_X += self.blackhole.offset_X2
-            self.blackhole.offset_X2 = 0
-            res_fact = new_size_image/self.blackhole.axe_X
-
-            self.blackhole.axe_X = new_size_image
-
-            self.blackhole.offset_X *= res_fact
-            self.blackhole.zoom *= res_fact
-
-            try:
-                self.blackhole.img_resize(self.blackhole.axe_X)
-                self.blackhole.img_debut = img_offset_X(
-                    self.blackhole.img_debut, self.blackhole.offset_X)
-            except ValueError as ex:
-                print("error when resizing image")
-                raise ValueError(ex)
-
-    def img_save(self):
-        """Save the image img2 with the parameters values. GUI version."""
-        if not self.test_GUI():
-            return None
-        self.reset_msg()
-
-        file_name, extension = return_folder_file_extension(self.blackhole.img_name)[1:]
-        image_name_save = "%s_D=%s_Rs=%s_size=%s_offset=%i%s" % (file_name, self.blackhole.D, self.blackhole.Rs, self.blackhole.axe_X, self.blackhole.offset_X+self.blackhole.offset_X2, extension)
-
-        if self.blackhole.img2 is not None:
-            self.blackhole.img2.save(image_name_save)
-            print("Saved "+image_name_save)
-            self.message4["text"] = "Saved "+image_name_save
-        else:
-            self.message4["text"] = "No image to save"
-
-    def save_gif(self):
-        """Call the gif method if the blackhole instance."""
-        if not self.test_GUI():
-            return None
-        self.reset_msg()
-
-        file_name, extension = return_folder_file_extension(self.blackhole.img_name)[1:]
-
-        if self.blackhole.img2 is not None:
-            self.message3["text"] = "Computing"
-        else:
-            self.message3["text"] = "No image to save"
-            return None
-        try:
-            if int(self.number.get()) <= 0:
-                print("Can't be 0 or negative")
-                self.message3["text"] = "Can't be 0 or negative"
-            else:
-                self.blackhole.gif(int(self.number.get()))
-                image_name_save = "%s_D=%s_Rs=%s_size=%s_offset=%s%s" % (file_name, self.blackhole.D, self.blackhole.Rs, self.blackhole.axe_X, "*", extension)
-                self.message3["text"] = "Saved "+image_name_save
-        except Exception:
-            print("need integer")
-            self.message3["text"] = "need integer"
-
-    def open_file_name(self):
-        """Open a new image and aply the previous parameters.
-        Compute a new black hole if parameters were changed.
-        Source: https://gist.github.com/Yagisanatode/0d1baad4e3a871587ab1"""
-        if not self.test_GUI():
-            return None
-        self.reset_msg()
-
-        img_name = askopenfilename(
-            # initialdir="",
-            filetypes=[("Image File", ".png .jpg")],
-            title="Image file")
-
-        if img_name:
-            size = int(self.size.get())
-            self.blackhole.open(img_name, size=size)
-            if self.blackhole.img_matrix_x is not None:
-                if self.blackhole.axe_X != self.blackhole.img_matrix_x.shape[1]:
-                    self.blackhole.compute(self.blackhole.Rs, self.blackhole.D)
-
-                self.blackhole.offset_X += self.blackhole.offset_X2
-                self.blackhole.offset_X2 = 0
-                self.blackhole.img_debut = img_offset_X(
-                    self.blackhole.img_debut, self.blackhole.offset_X)
-                self.blackhole.img2 = self.blackhole.img_pixels(self.blackhole.img_debut)
-
-                self.blackhole.plot()
-
-    def reset_msg(self):
-        """Reset all GUI messages."""
-        if not self.test_GUI():
-            return None
-        self.message5["text"] = ""
-        self.message4["text"] = ""
-        self.message3["text"] = ""
-        self.message2["text"] = ""
-        self.message["text"] = ""
-
-    def test_GUI(self):
-        """Return True if the GUI is active and False otherwise."""
-        try:
-            temp = self.message["text"]
-            self.message["text"] = ""
-            self.message["text"] = temp
-            return True
-        except Exception:
-            print("The GUI is not openned, function ignored")
-            return False
-
-
 def listdirectory(path, matrix_file):
     """Allow to search if files exist in folders.
     Source: https://python.developpez.com/faq/?page=Fichier#isFile"""
@@ -1014,9 +710,4 @@ if __name__ == "__main__":
     blackhole = BlackHole()
     blackhole.compute(8, 50)
     blackholeGUI = BlackHoleGUI(blackhole)
-    print('blah')
-#    img_name = os.path.join('images', 'milkyway.jpg')
-#    blackhole.open(img_name, size=360)
-#    blackhole.img_resize(360)
-#    blackhole.compute(Rs=8, D=50)
 
