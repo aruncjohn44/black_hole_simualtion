@@ -59,7 +59,7 @@ class BlackHole:
         self.Rs = 8  # Schwarzschild radius in ua
         self.M = self.Rs * c**2 / 2 / G * au / M_sun  # Black hole mass in solar masses  (del if use solar mass)
         self.D = 50  # Distance from the black hole in ua
-        self.axe_X = 360  # Image size over x
+        self.axe_X = 1000  # Image size over x
         self.FOV_img = 360  # The image FOV (it doesn't change the current image FOV !)
 
         self.kind = 'cubic'  # Interpolation: linear for speed(less accurate), cubic for precision (slow)
@@ -165,12 +165,6 @@ class BlackHole:
         print("trajectories time: %.1f" % (time.process_time()-vrai_debut))
 
         img_matrix_x, img_matrix_y = self.create_matrices()
-
-        if self.save_matrix is True:
-            matrix_file_x, matrix_file_y = self.matrices_names()
-            np.savetxt(matrix_file_x, img_matrix_x, fmt='%i')
-            np.savetxt(matrix_file_y, img_matrix_y, fmt='%i')
-            print("Saved matrices: \n\t%s\n\t%s" % (matrix_file_x, matrix_file_y))
 
         self.img_matrix_x = img_matrix_x
         self.img_matrix_y = img_matrix_y
@@ -468,11 +462,6 @@ class BlackHole:
 
             img2 = self.img_pixels(self.img_debut)
 
-            if self.fixed_background != True and self.fixed_background != False:
-
-                if self.fixed_background.get() is True:  # needed for GUI
-                    img2 = img_offset_X(img2, -offset_X_tot)  # if want a fixed background and moving black hole
-
             if self.fixed_background is True:
                 img2 = img_offset_X(img2, -offset_X_tot)  # if want a fixed background and moving black hole
 
@@ -704,10 +693,16 @@ def approching_blackhole():
         blackhole.img_save()
 
 
+def circle_eq(radius = 150, offset=150):
+    """
+    (x - 150)^2 - y^2 = 150^2
+    """
+    y = np.square(radius, 2)
+
+
 if __name__ == "__main__":
 #    blackholeGUI = BlackHoleGUI()
-
     blackhole = BlackHole()
-    blackhole.compute(8, 50)
-    blackholeGUI = BlackHoleGUI(blackhole)
+    blackhole.compute(2, 50)
+    blackhole.gif(3)
 

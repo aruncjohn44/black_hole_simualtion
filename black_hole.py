@@ -1012,7 +1012,7 @@ if __name__ == "__main__":
 #    blackholeGUI = BlackHoleGUI()
 
     blackhole = BlackHole()
-    blackhole.compute(8, 50)
+    # blackhole.compute(8, 50)
     blackholeGUI = BlackHoleGUI(blackhole)
     print('blah')
 #    img_name = os.path.join('images', 'milkyway.jpg')
