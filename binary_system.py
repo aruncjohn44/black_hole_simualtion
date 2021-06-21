@@ -33,6 +33,9 @@ from scipy.constants import au  # sun-earth distance m = 149597870691 m
 from PIL import Image  # Use to open, modify and save images
 from PIL import ImageDraw
 
+from scipy.optimize import fsolve
+import math
+
 M_sun = 1.98840987e+30  # solar mass in Kg taken from AstroPy
 
 
@@ -45,7 +48,7 @@ class BlackHole:
         try:
             abs_path = os.path.abspath(os.path.dirname(sys.argv[0]))
             folder = os.path.join(abs_path, 'images')
-            img_name = os.path.join(folder, 'blah.jpg')
+            img_name = os.path.join(folder, 'galaxy.jpg')
             self.open(img_name, size=self.axe_X)
 
         except FileNotFoundError:
@@ -59,19 +62,21 @@ class BlackHole:
         self.Rs = 8  # Schwarzschild radius in ua
         self.M = self.Rs * c**2 / 2 / G * au / M_sun  # Black hole mass in solar masses  (del if use solar mass)
         self.D = 50  # Distance from the black hole in ua
-        self.axe_X = 1000  # Image size over x
+        self.axe_X = 2000  # Image size over x
         self.FOV_img = 360  # The image FOV (it doesn't change the current image FOV !)
 
         self.kind = 'cubic'  # Interpolation: linear for speed(less accurate), cubic for precision (slow)
         self.fixed_background = True
         self.display_trajectories = True
-        self.display_interpolation = True
+        self.display_interpolation = False
         self.display_blackhole = True
         # Note that openning matrices is slower than computing the blackhole,
         # but skip trajectories calculation than takes 1.5s -> better to open
         # matricies at low resolution but better to compute at high resolution
         self.use_matrix = True  # Use matrices if exists  # TODO: GUI option
         self.save_matrix = False  # will save or overwrite matrices if exists
+        self.img_debut_mod = None
+        self.img_offset = None
 
         self.zoom = 0
         self.offset_X = 0
@@ -102,6 +107,8 @@ class BlackHole:
     def img_resize(self, axe_X):
         """Create img_debut at the desired size from the img_original."""
         self.img_debut = self.img_original.convert("RGB")
+        size_X, size_Y = self.img_debut.size
+        self.img_debut = self.img_debut.crop((0, 516, size_X, size_Y-516))
         size_X, size_Y = self.img_debut.size
         size_factor = axe_X/size_X
         axe_X = int(axe_X)
@@ -440,42 +447,49 @@ class BlackHole:
 
         return xv2, yv2
 
-    def gif(self, nbr_offset=1):
+    def gif(self, radius=150, n_instance=10):
         """Apply seveal offset and save each images to be reconstructed
         externaly to make agif animation of a moving black hole."""
         file_name, extension = return_folder_file_extension(self.img_name)[1:]
 
         offset_X_temp = 0  # locals, relative to img2 given, not absolute
         offset_X_tot = 0
-        time_estimate = 2.2e-8*self.axe_X*self.axe_Y*(nbr_offset+1)
-        print("\ntotal offsets estimation time: %.1f" % (time_estimate))
 
-        if nbr_offset == 1:  # avoid two offsets for a single image
-            nbr_offset = 0
+        if n_instance == 1:  # avoid two offsets for a single image
+            n_instance = 0
+
+        coords = np.array(create_circle(radius, n_instance))
+        # coords = np.array(coords)
 
         # +1 for final offset to set back image to initial offset
-        for a in range(nbr_offset+1):
-            if a < nbr_offset:
-                print("\n%s/%s\toffset: %s" % (a+1, nbr_offset, offset_X_tot))
+        for i, (x, y) in enumerate(coords):
+            self.img_offset = self.img_debut.copy()
+            self.img_offset = img_offset_X(self.img_offset, x)
+            self.img_offset = img_offset_Y(self.img_offset, y)
 
-            self.img_debut = img_offset_X(self.img_debut, offset_X_temp)
-
-            img2 = self.img_pixels(self.img_debut)
+            img2 = self.img_pixels(self.img_offset)
+            # img2 = self.img_debut
 
             if self.fixed_background is True:
-                img2 = img_offset_X(img2, -offset_X_tot)  # if want a fixed background and moving black hole
+                img2 = img_offset_X(img2, -x)  # if want a fixed background and moving black hole
+                img2 = img_offset_Y(img2, -y)
 
-            if nbr_offset != 1 and a < nbr_offset: #if need to save real offset, put offset_x in global and offset_x+offset_x2+offset_x_tot in save name
-                image_name_save = "%s_D=%s_Rs=%s_size=%s_offset=%i%s" % (file_name, self.D, self.Rs, self.axe_X, offset_X_tot+self.offset_X+self.offset_X2, extension)
-                img2.save(image_name_save)
-                print("Save: "+image_name_save)
+            # adding binary ----------------------------------
+            self.img_offset = img2
+            self.img_offset = img_offset_X(self.img_offset, -x)
+            self.img_offset = img_offset_Y(self.img_offset, -y)
 
-            if a < nbr_offset:
-                offset_X_temp = int(self.axe_X/nbr_offset) #at the end to have offset=0 for the first iteration
-                offset_X_tot += offset_X_temp
+            img3 = self.img_pixels(self.img_offset)
 
-            elif nbr_offset > 1:
-                print("\nOffset reset to %i" % (offset_X_tot % self.axe_X))
+            if self.fixed_background is True:
+                img3 = img_offset_X(img3, x)  # if want a fixed background and moving black hole
+                img3 = img_offset_Y(img3, y)
+            # finished adding binary -------------------------
+            size_x, size_y = img3.size
+            img3 = img3.crop((350, 220, size_x-350, size_y-220))
+            image_name_save = os.path.join(r'D:\black_hole_sim\gif_img_save', 'img_%s_x_%s_y_%s.jpg' % (i, x, y))
+            img3.save(image_name_save)
+            print("Save: "+ image_name_save)
 
         self.img2 = img2
 
@@ -657,7 +671,35 @@ def img_offset_X(img, offset_X):
 
     img.paste(img_left, (0, 0))
 
+    return img.copy()
+
+def img_offset_Y(img, offset_Y):
+    """Return the image with an offset in the X-axis.
+    Allow to rotate around the blackhole."""
+    offset_Y = int(offset_Y)
+    (axe_X, axe_Y) = img.size
+
+    while offset_Y >= axe_Y:
+        offset_Y -= axe_Y
+
+    if offset_Y == 0:
+        return img
+
+    if offset_Y < 0:
+        offset_Y = -offset_Y
+        img_top = img.crop((0, 0, axe_X, axe_Y-offset_Y))
+        img_bottom = img.crop((0, axe_Y-offset_Y, axe_X, axe_Y))
+        img.paste(img_top, (0, offset_Y))
+
+    else:
+        img_top = img.crop((0, 0, axe_X, offset_Y))
+        img_bottom = img.crop((0, offset_Y, axe_X, axe_Y))
+        img.paste(img_top, (0, axe_Y-offset_Y))
+
+    img.paste(img_bottom, (0, 0))
+
     return img
+
 
 
 def return_folder_file_extension(img_name):
@@ -693,16 +735,36 @@ def approching_blackhole():
         blackhole.img_save()
 
 
-def circle_eq(radius = 150, offset=150):
+def circular_movement(radius = 150, theta=None):
     """
-    (x - 150)^2 - y^2 = 150^2
+    Radius is in pixels, angle n radians
     """
-    y = np.square(radius, 2)
+    y = radius * np.sin(theta)
+    if theta == 0:
+        x = radius
+    elif np.pi*0.99 < theta < np.pi*1.01:
+        x = -radius
+    else:
+        x = y/np.tan(theta)
+    return x, y
 
+def create_circle(radius=None, n_instance=None):
+    """
+    Creates x,y coordinated for the circle
+
+    Parameters
+    ----------
+    radius: int
+    n_instance: int
+    """
+    del_theta = np.pi * 2/(n_instance)
+    theta_list = np.linspace(0, np.pi * 2, n_instance)
+    coordinates = [circular_movement(radius, theta) for theta in theta_list]
+    return coordinates
 
 if __name__ == "__main__":
 #    blackholeGUI = BlackHoleGUI()
     blackhole = BlackHole()
-    blackhole.compute(2, 50)
-    blackhole.gif(3)
+    blackhole.compute(4, 200)
+    blackhole.gif(165, 60)
 

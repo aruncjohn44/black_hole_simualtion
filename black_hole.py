@@ -45,7 +45,7 @@ class BlackHole:
         try:
             abs_path = os.path.abspath(os.path.dirname(sys.argv[0]))
             folder = os.path.join(abs_path, 'images')
-            img_name = os.path.join(folder, 'blah.jpg')
+            img_name = os.path.join(folder, 'milkyway.jpg')
             self.open(img_name, size=self.axe_X)
 
         except FileNotFoundError:
