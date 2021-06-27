@@ -460,6 +460,7 @@ class BlackHole:
 
         coords = np.array(create_circle(radius, n_instance))
         # coords = np.array(coords)
+        images = []
 
         # +1 for final offset to set back image to initial offset
         for i, (x, y) in enumerate(coords):
@@ -486,11 +487,13 @@ class BlackHole:
                 img3 = img_offset_Y(img3, y)
             # finished adding binary -------------------------
             size_x, size_y = img3.size
-            img3 = img3.crop((350, 220, size_x-350, size_y-220))
+            img3 = img3.crop((450, 230, size_x-450, size_y-230))
             image_name_save = os.path.join(r'D:\black_hole_sim\gif_img_save', 'img_%s_x_%s_y_%s.jpg' % (i, x, y))
             img3.save(image_name_save)
             print("Save: "+ image_name_save)
+            images.append(img3)
 
+        images[0].save(r'D:\black_hole_sim\gif_img_save\animated_image.gif', format='GIF', save_all=True, append_images=images[1:], optimize=False, duration = 100)
         self.img2 = img2
 
     def plot(self):
@@ -761,6 +764,7 @@ def create_circle(radius=None, n_instance=None):
     theta_list = np.linspace(0, np.pi * 2, n_instance)
     coordinates = [circular_movement(radius, theta) for theta in theta_list]
     return coordinates
+
 
 if __name__ == "__main__":
 #    blackholeGUI = BlackHoleGUI()
